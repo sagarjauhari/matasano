@@ -1,9 +1,9 @@
 def hex_to_base64(str)
   new_str = ""
   while str.length > 0
-    a = str[0].to_i 16
-    b = str[1].to_i 16
-    c = str[2].to_i 16
+    a = str[0].hex
+    b = str[1].hex
+    c = str[2].hex
 
     new_str << dec_to_base_64((a << 2) + (b >> 2)).to_s
     new_str << dec_to_base_64(((b&3) << 4) + c).to_s
