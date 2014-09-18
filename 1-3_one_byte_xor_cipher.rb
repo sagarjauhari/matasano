@@ -5,7 +5,7 @@ def single_byte_xor_cipher(str)
     decode_hex(str).map{ |c| (c ^ i) }.pack('C*')
   end
   top_ten = sim_scores(strings).sort_by { |k,v| v } .reverse.first(10)
-  top_ten.map{|e| [strings[e[0]], e[1]]}
+  top_ten.map{|e| [e[0], strings[e[0]], e[1]]}
 end
 
 def decode_hex(str)
