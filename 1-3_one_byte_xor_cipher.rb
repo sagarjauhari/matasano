@@ -1,5 +1,6 @@
 require "matrix"
 
+# @return [[index, string, score], [...], ...]
 def single_byte_xor_cipher(str)
   strings = (0...256).map do |i|
     decode_hex(str).map{ |c| (c ^ i) }.pack('C*')
