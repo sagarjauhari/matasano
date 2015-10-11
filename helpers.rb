@@ -34,3 +34,8 @@ end
 unless hamming_dist("this is a test", "wokka wokka!!!") == 37
   raise "Hamming distance incorrect"
 end
+
+# @return base64 encoded data without extra line feeds added
+def hex_to_base64(str)
+  [[str].pack("H*")].pack("m0")
+end

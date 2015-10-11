@@ -1,4 +1,9 @@
+# @return base64 encoded data without extra line feeds added
 def hex_to_base64(str)
+  [[str].pack("H*")].pack("m0")
+end
+
+def hex_to_base64_manual(str)
   new_str = ""
   while str.length > 0
     a = str[0].hex
