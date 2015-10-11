@@ -1,6 +1,7 @@
 require "matrix"
 require "./helpers.rb"
 
+# @param str [String] Hex encoded
 # @return [[index, string, score], [...], ...]
 def single_byte_xor_cipher(str, debug: false)
   strings = (0...256).map do |i|
@@ -8,6 +9,8 @@ def single_byte_xor_cipher(str, debug: false)
     if(debug)
       ap "#{i}: #{xored}"
     end
+
+    xored
   end
   top_ten = sim_scores(strings).sort_by { |k, v| v } .reverse.first(10)
   top_ten.map{|e| [e[0], strings[e[0]], e[1]]}

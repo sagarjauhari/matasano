@@ -6,15 +6,11 @@ def break_repeat_key_xor(filename)
   data64 = File.open(filename).map(&:strip).join("")
   data = data64.unpack("m").first
 
-  ap repeat_key_xor(data, "Hello world")
-
   # The KEYSIZE with the smallest normalized edit distance is probably the key.
   # You could proceed perhaps with the smallest 2-3 KEYSIZE values. Or take 4
   # KEYSIZE blocks instead of 2 and average the distances.
-  best_key_sizes = key_size_stats(data).first(10).map(&:first)
+  best_key_sizes = key_size_stats(data).first(20).map(&:first)
   puts "Following were the best key sizes found: #{best_key_sizes}"
-
-  best_key_sizes = [11] # debug
 
   best_key_sizes.each do |key_size|
     puts "Key size: #{key_size}"
@@ -25,12 +21,7 @@ def break_repeat_key_xor(filename)
     # repeating-key XOR key byte for that block. Put them together and you have
     # the key.
     key = blocks.map do |idx, block|
-      ap block
-      ap idx
-      raise "hello"
-      best_result = single_byte_xor_cipher(block, debug: true)[0]
-      ap best_result
-
+      best_result = single_byte_xor_cipher(encode_hex(block))[0]
       key_part = best_result[0]
       [idx, key_part]
     end.
@@ -38,7 +29,7 @@ def break_repeat_key_xor(filename)
       map{ |i| i[1].chr }.
       join("")
 
-    ap key
+    puts "Probable key: '#{key}'"
   end
 end
 
@@ -102,5 +93,5 @@ def decrypt_64file(filename, key)
 end
 
 
-# break_repeat_key_xor("./1-6_data_test_encrypted64.txt")
+break_repeat_key_xor("./1-6_data.txt")
 
