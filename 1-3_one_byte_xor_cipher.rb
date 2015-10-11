@@ -1,4 +1,5 @@
 require "matrix"
+require "./helpers.rb"
 
 # @return [[index, string, score], [...], ...]
 def single_byte_xor_cipher(str)
@@ -7,14 +8,6 @@ def single_byte_xor_cipher(str)
   end
   top_ten = sim_scores(strings).sort_by { |k, v| v } .reverse.first(10)
   top_ten.map{|e| [e[0], strings[e[0]], e[1]]}
-end
-
-def decode_hex(str)
-  [str].pack('H*').bytes
-end
-
-def encode_hex(str)
-  str.unpack('H*').first
 end
 
 # Keep space, apostrophy?
