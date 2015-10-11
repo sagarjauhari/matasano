@@ -9,7 +9,7 @@ def break_repeat_key_xor(filename)
   # The KEYSIZE with the smallest normalized edit distance is probably the key.
   # You could proceed perhaps with the smallest 2-3 KEYSIZE values. Or take 4
   # KEYSIZE blocks instead of 2 and average the distances.
-  best_key_sizes = key_size_stats(data).first(20).map(&:first)
+  best_key_sizes = key_size_stats(data).first(5).map(&:first)
   puts "Following were the best key sizes found: #{best_key_sizes}"
 
   best_key_sizes.each do |key_size|
@@ -30,6 +30,9 @@ def break_repeat_key_xor(filename)
       join("")
 
     puts "Probable key: '#{key}'"
+    puts "=========================================================="
+    puts "Decrypted text: '#{decrypt_64file("./1-6_data.txt", key)}'"
+    puts "=========================================================="
   end
 end
 
@@ -39,10 +42,23 @@ def key_size_stats(data)
   # KEYSIZE worth of bytes, and find the edit distance between them. Normalize
   # this result by dividing by KEYSIZE.
   (2..40).each_with_object([]) do |key_size, a|
-    chunk_1 = data[0..key_size-1]
-    chunk_2 = data[key_size..2*key_size-1]
+    dists = data.split("").
+      each_slice(2 * key_size).
+      with_index.
+      select do |slice_arr, i|
+        i < (data.length / (2 * key_size))
+      end.
+      map do |slice_arr, i|
+      slice = slice_arr.join
+      chunk_1 = slice[0..key_size-1]
+      chunk_2 = slice[key_size..2*key_size-1]
 
-    a << [key_size, hamming_dist(chunk_1, chunk_2).to_f / key_size]
+      hamming_dist(chunk_1, chunk_2).to_f / key_size
+    end
+
+    avg_dist = dists.inject(&:+) / dists.count
+
+    a << [key_size, avg_dist]
   end.sort_by{ |i| i[1] }
 end
 
@@ -67,8 +83,6 @@ def transpose_blocks(data, size)
     blocks[k] = v.join("")
   end
 end
-
-# break_repeat_key_xor("./1-6_data.txt")
 
 # Encrypts a data file with repeating key XOR and Base-64s it
 # Example:
