@@ -1,5 +1,6 @@
 # Common helper methods for crypto solutions
 require "awesome_print"
+require "base64"
 
 def decode_hex(str)
   [str].pack('H*').bytes
