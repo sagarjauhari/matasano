@@ -7,32 +7,32 @@ state = Matrix[]    # State global var
 def sub_bytes
 end
 
-# AES Inverse Round 4/4
-def sub_bytes_inverse
+# AES inv Round 4/4
+def sub_bytes_inv
 end
 
 # AES Round 2/4
 def shift_rows
 end
 
-# AES Inverse Round 3/4
-def shift_rows_inverse
+# AES inv Round 3/4
+def shift_rows_inv
 end
 
 # AES Round 3/4
 def mix_cols
 end
 
-# AES Inverse Round 2/4
-def mix_cols_inverse
+# AES inv Round 2/4
+def mix_cols_inv
 end
 
 # AES Round 4/4
 def add_round_key(round_key)
 end
 
-# AES Inverse Round 1/4
-def add_round_key_inverse(round_key)
+# AES inv Round 1/4
+def add_round_key_inv(round_key)
 end
 
 def round(round_key, final: false)
@@ -42,11 +42,11 @@ def round(round_key, final: false)
   add_round_key(round_key)
 end
 
-def round_inverse(round_key, final: false)
-  add_round_key(round_key)
-  mix_cols unless final
-  shift_rows
-  sub_bytes
+def round_inv(round_key, final: false)
+  add_round_key_inv(round_key)
+  mix_cols_inv unless final
+  shift_rows_inv
+  sub_bytes_inv
 end
 
 def aes_encrypt_block(data_arr, key_arr)
