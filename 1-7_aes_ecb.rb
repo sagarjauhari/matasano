@@ -2,7 +2,7 @@ require "./helpers.rb"
 
 class AES
   def initialize
-    @n_cycles = 10 # Because key is 16 bytes long
+    @n_cycles = 10       # Because key is 16 bytes long
     @state = Matrix[]    # State global var
   end
 
@@ -39,20 +39,29 @@ class AES
 
   # AES Round 1/4
   def sub_bytes
-    puts "# Sub Bytes"
-    ap @state
+    @state = @state.map{ |b| S_BOX[b] }
   end
 
   # AES inv Round 4/4
   def sub_bytes_inv
+      @state = @state.map{ |b| S_BOX_INV[b] }
   end
 
   # AES Round 2/4
   def shift_rows
+    shifted_rows = @state.row_vectors.map.with_index do |vec, idx|
+      vec.to_a.rotate(idx)
+    end
+    @state = Matrix.rows(shifted_rows)
   end
 
   # AES inv Round 3/4
   def shift_rows_inv
+    col_count = @state.column_count
+    shifted_rows = @state.row_vectors.map.with_index do |vec, idx|
+      vec.to_a.rotate(col_count - idx)
+    end
+    @state = Matrix.rows(shifted_rows)
   end
 
   # AES Round 3/4
