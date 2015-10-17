@@ -7,14 +7,14 @@ class AES
   end
 
   def aes_ecb_encrypt(filename, key)
-    key_arr = key.split("")
+    key_arr = key.unpack("C*")
 
     File.open(filename, "r") do |file|
       data = pad_data(file.read, 16)[0..127]
       data.unpack("C*").each_slice(16).map do |slice|
         @state = array_to_matrix(slice)
 
-        aes_encrypt_block
+        aes_encrypt_block(key_arr)
 
         ap matrix_to_array(@state).pack("C*")
       end
@@ -26,15 +26,16 @@ class AES
 
   private
 
-  def aes_encrypt_block
-    round("HELLO")
+  def aes_encrypt_block(key_arr)
+    round_key_arr = key_arr # generate key for each round
+    round(round_key_arr)
   end
 
-  def round(round_key, final: false)
+  def round(round_key_arr, final: false)
     sub_bytes
     shift_rows
     mix_cols unless final
-    add_round_key(round_key)
+    add_round_key(round_key_arr)
   end
 
   # AES Round 1/4
@@ -95,11 +96,15 @@ class AES
   end
 
   # AES Round 4/4
-  def add_round_key(round_key)
+  def add_round_key(round_key_arr)
+    @state = @state.map.with_index do |b, idx|
+      b ^ round_key_arr[idx]
+    end
   end
 
-  # AES inv Round 1/4
+  # AES inv Round 1/4 (self inverse)
   def add_round_key_inv(round_key)
+    add_round_key(round_key)
   end
 
   def round_inv(round_key, final: false)
