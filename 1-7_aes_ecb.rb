@@ -66,10 +66,32 @@ class AES
 
   # AES Round 3/4
   def mix_cols
+    c_x = Matrix[
+      [0x02 ,0x03 ,0x01, 0x01],
+      [0x01 ,0x02 ,0x03, 0x01],
+      [0x01 ,0x01 ,0x02, 0x03],
+      [0x03 ,0x01 ,0x01, 0x02]
+    ]
+
+    mixed_cols = @state.column_vectors.map.with_index do |vec|
+      (c_x * Matrix.columns([vec])).column_vectors.first.to_a
+    end
+    @state = Matrix.columns(mixed_cols)
   end
 
   # AES inv Round 2/4
   def mix_cols_inv
+    d_x = Matrix[
+      [0x0b, 0x0d, 0x09, 0x0e],
+      [0x0e, 0x0b, 0x0d, 0x09],
+      [0x09, 0x0e, 0x0b, 0x0d],
+      [0x0d, 0x09, 0x0e, 0x0b],
+    ]
+
+    mixed_cols = @state.column_vectors.map.with_index do |vec|
+      (d_x * Matrix.columns([vec])).column_vectors.first.to_a
+    end
+    @state = Matrix.columns(mixed_cols)
   end
 
   # AES Round 4/4
