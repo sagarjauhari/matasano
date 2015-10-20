@@ -59,6 +59,16 @@ def matrix_to_array(m)
   m.column_vectors.map(&:to_a).flatten
 end
 
+
+# Prints the state
+def print_state(method_name)
+  puts "\tMethod: #{method_name}"
+  @state.row_vectors.each do |vec|
+    puts "\t" + vec.to_a.join("\t")
+  end
+  puts
+end
+
 # Exponentiation of 2 to a user-specified value
 AES_RCON = [
   0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a,

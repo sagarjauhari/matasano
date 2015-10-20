@@ -1,5 +1,7 @@
 require "./helpers.rb"
 
+DEBUG = true
+
 class AES
   Nb =  4 # Number of columns in state
   Nk =  4 # Number of columns in key
@@ -50,12 +52,22 @@ class AES
       w_key << w_key[i - Nk].map.with_index{ |b, i| b ^ temp[i]}
     end
 
-    w_key.flatten
+    w_key
   end
 
   def aes_encrypt_block(key_arr)
-    round_key_arr = expand_key(key_arr)[0..15] # generate key for each round
-    round(round_key_arr)
+    expanded_key = expand_key(key_arr) # generate key for each round
+
+    puts "#{0} - #{Nb - 1}"
+    add_round_key(expanded_key[0..(Nb - 1)].flatten)
+
+    (1..Nr - 1).each do |i|
+      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}"
+      round(expanded_key[Nb*i..(Nb*(i + 1) - 1)].flatten)
+    end
+
+    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}"
+    round(expanded_key[Nb*Nr..(Nb(Nr + 1) - 1)].flatten, final: true)
   end
 
   def round(round_key_arr, final: false)
@@ -68,6 +80,7 @@ class AES
   # AES Round 1/4
   def sub_bytes
     @state = @state.map{ |b| S_BOX[b] }
+    print_state(__method__) if DEBUG
   end
 
   # AES inv Round 4/4
@@ -81,6 +94,7 @@ class AES
       vec.to_a.rotate(idx)
     end
     @state = Matrix.rows(shifted_rows)
+    print_state(__method__) if DEBUG
   end
 
   # AES inv Round 3/4
@@ -102,9 +116,13 @@ class AES
     ]
 
     mixed_cols = @state.column_vectors.map.with_index do |vec|
+      ap c_x * Matrix.columns([vec])
+      # this is incorrect. Either replace addition by Xor 
+      # or use lookup tables
       (c_x * Matrix.columns([vec])).column_vectors.first.to_a
     end
     @state = Matrix.columns(mixed_cols)
+    print_state(__method__) if DEBUG
   end
 
   # AES inv Round 2/4
@@ -127,6 +145,7 @@ class AES
     @state = @state.map.with_index do |b, idx|
       b ^ round_key_arr[idx]
     end
+    print_state(__method__) if DEBUG
   end
 
   # AES inv Round 1/4 (self inverse)
