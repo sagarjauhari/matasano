@@ -1,8 +1,11 @@
 require "./helpers.rb"
 
 class AES
+  Nb =  4 # Number of columns in state
+  Nk =  4 # Number of columns in key
+  Nr = 10 # Number of rounds
+
   def initialize
-    @n_cycles = 10       # Because key is 16 bytes long
     @state = Matrix[]    # State global var
   end
 
@@ -26,8 +29,32 @@ class AES
 
   private
 
+  # Expands the key to a linear array of 4-byte words of length
+  # Nb*(Nr + 1) = 44
+  def expand_key(key_arr)
+    w_key = []
+    
+    (0..Nk-1).each do |i|
+      w_key << key_arr[(4*i)..(4*i + 3)]
+    end
+
+    (Nk..(Nb*(Nr + 1) - 1)).each do |i|
+      temp = w_key[i-1]
+      if i % Nk == 0
+        temp = temp.
+          rotate.
+          map{ |b| S_BOX[b] }.
+          map.with_index{ |b, i| b ^ AES_RCON[i / Nk] }
+      end
+
+      w_key << w_key[i - Nk].map.with_index{ |b, i| b ^ temp[i]}
+    end
+
+    w_key.flatten
+  end
+
   def aes_encrypt_block(key_arr)
-    round_key_arr = key_arr # generate key for each round
+    round_key_arr = expand_key(key_arr)[0..15] # generate key for each round
     round(round_key_arr)
   end
 
