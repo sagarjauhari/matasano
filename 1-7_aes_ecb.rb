@@ -1,7 +1,7 @@
 require "./helpers.rb"
 require "./rijndael_tables.rb"
 
-DEBUG = false
+DEBUG = true
 
 class AES
   Nb =  4 # Number of columns in state
@@ -108,20 +108,11 @@ class AES
   end
 
   # AES Round 3/4
-  # TODO Use tables instead of calculating manually so inverse is easy
+  # https://en.wikipedia.org/wiki/Rijndael_mix_columns
   def mix_cols
-    # https://en.wikipedia.org/wiki/Rijndael_mix_columns
-    mixed_cols = @state.column_vectors.map do |vec|
-      a = vec.to_a.dup
-      b = [] # Stores each element in 'a' multiplied by 2 in GF(2^8)
-
-      a.each_with_index do |val, i|
-        hi_bit_set = (val >> 7 == 1)
-        b[i] = (val << 1) & 0xFF
-        if hi_bit_set
-          b[i] ^= 0x1B
-        end
-      end
+    mixed_cols = @state.column_vectors.map do |a|
+      # 'b' stores each element in 'a' multiplied by 2 in GF(2^8)
+      b = a.map{ |val| GALIOS_MUL_2[val] }
 
       [
         b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1], # 2*a0 + a3 + a2 + 3*a1
@@ -136,6 +127,23 @@ class AES
 
   # AES inv Round 2/4
   def mix_cols_inv
+    mixed_cols = @state.column_vectors.map do |a|
+      [
+        GALIOS_MUL_14[a[0]] ^ GALIOS_MUL_11[a[1]] ^
+        GALIOS_MUL_13[a[2]] ^ GALIOS_MUL_9[a[3]],
+
+        GALIOS_MUL_9[a[0]] ^ GALIOS_MUL_14[a[1]] ^
+        GALIOS_MUL_11[a[2]] ^ GALIOS_MUL_13[a[3]],
+
+        GALIOS_MUL_13[a[0]] ^ GALIOS_MUL_9[a[1]] ^
+        GALIOS_MUL_14[a[2]] ^ GALIOS_MUL_11[a[3]],
+
+        GALIOS_MUL_11[a[0]] ^ GALIOS_MUL_13[a[1]] ^
+        GALIOS_MUL_9[a[2]] ^ GALIOS_MUL_14[a[3]]
+      ]
+    end
+    @state = Matrix.columns(mixed_cols)
+    print_state(__method__) if DEBUG
   end
 
   # AES Round 4/4
