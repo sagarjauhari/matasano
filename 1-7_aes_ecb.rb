@@ -1,6 +1,6 @@
 require "./helpers.rb"
 
-DEBUG = true
+DEBUG = false
 
 class AES
   Nb =  4 # Number of columns in state
@@ -58,16 +58,16 @@ class AES
   def aes_encrypt_block(key_arr)
     expanded_key = expand_key(key_arr) # generate key for each round
 
-    puts "#{0} - #{Nb - 1}"
+    puts "#{0} - #{Nb - 1}" if DEBUG
     add_round_key(expanded_key[0..(Nb - 1)].flatten)
 
     (1..Nr - 1).each do |i|
-      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}"
+      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
       round(expanded_key[Nb*i..(Nb*(i + 1) - 1)].flatten)
     end
 
-    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}"
-    round(expanded_key[Nb*Nr..(Nb(Nr + 1) - 1)].flatten, final: true)
+    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
+    round(expanded_key[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten, final: true)
   end
 
   def round(round_key_arr, final: false)
@@ -108,18 +108,25 @@ class AES
 
   # AES Round 3/4
   def mix_cols
-    c_x = Matrix[
-      [0x02 ,0x03 ,0x01, 0x01],
-      [0x01 ,0x02 ,0x03, 0x01],
-      [0x01 ,0x01 ,0x02, 0x03],
-      [0x03 ,0x01 ,0x01, 0x02]
-    ]
+    # https://en.wikipedia.org/wiki/Rijndael_mix_columns
+    mixed_cols = @state.column_vectors.map do |vec|
+      a = vec.to_a.dup
+      b = [] # Stores each element in 'a' multiplied by 2 in GF(2^8)
 
-    mixed_cols = @state.column_vectors.map.with_index do |vec|
-      ap c_x * Matrix.columns([vec])
-      # this is incorrect. Either replace addition by Xor 
-      # or use lookup tables
-      (c_x * Matrix.columns([vec])).column_vectors.first.to_a
+      a.each_with_index do |val, i|
+        hi_bit_set = (val >> 7 == 1)
+        b[i] = (val << 1) & 0xFF
+        if hi_bit_set
+          b[i] ^= 0x1B
+        end
+      end
+
+      [
+        b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1], # 2*a0 + a3 + a2 + 3*a1
+        b[1] ^ a[0] ^ a[3] ^ b[2] ^ a[2], # 2*a1 + a0 + a3 + 3*a2
+        b[2] ^ a[1] ^ a[0] ^ b[3] ^ a[3], # 2*a2 + a1 + a0 + 3*a3
+        b[3] ^ a[2] ^ a[1] ^ b[0] ^ a[0]  # 2*a3 + a2 + a1 + 3*a0
+      ]
     end
     @state = Matrix.columns(mixed_cols)
     print_state(__method__) if DEBUG
