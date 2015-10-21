@@ -1,4 +1,5 @@
 require "./helpers.rb"
+require "./rijndael_tables.rb"
 
 DEBUG = false
 
@@ -46,7 +47,7 @@ class AES
         temp = temp.
           rotate.
           map{ |b| S_BOX[b] }.
-          map.with_index{ |b, i| b ^ AES_RCON[i / Nk] }
+          map.with_index{ |b, i| b ^ RCON[i / Nk] }
       end
 
       w_key << w_key[i - Nk].map.with_index{ |b, i| b ^ temp[i]}
@@ -107,6 +108,7 @@ class AES
   end
 
   # AES Round 3/4
+  # TODO Use tables instead of calculating manually so inverse is easy
   def mix_cols
     # https://en.wikipedia.org/wiki/Rijndael_mix_columns
     mixed_cols = @state.column_vectors.map do |vec|
@@ -134,17 +136,6 @@ class AES
 
   # AES inv Round 2/4
   def mix_cols_inv
-    d_x = Matrix[
-      [0x0b, 0x0d, 0x09, 0x0e],
-      [0x0e, 0x0b, 0x0d, 0x09],
-      [0x09, 0x0e, 0x0b, 0x0d],
-      [0x0d, 0x09, 0x0e, 0x0b],
-    ]
-
-    mixed_cols = @state.column_vectors.map.with_index do |vec|
-      (d_x * Matrix.columns([vec])).column_vectors.first.to_a
-    end
-    @state = Matrix.columns(mixed_cols)
   end
 
   # AES Round 4/4
