@@ -1,7 +1,7 @@
 require "./helpers.rb"
 require "./rijndael_tables.rb"
 
-DEBUG = true
+DEBUG = false
 
 class AES
   Nb =  4 # Number of columns in state
@@ -28,13 +28,26 @@ class AES
   end
 
   def aes_ecb_decrypt(filename, key)
+    key_arr = key.unpack("C*")
+
+    File.open(filename, "r") do |file|
+      data = pad_data(file.read, 16)[0..127]
+      data.unpack("C*").each_slice(16).map do |slice|
+        @state = array_to_matrix(slice)
+
+        aes_encrypt_block(key_arr)
+
+        ap matrix_to_array(@state).pack("C*")
+      end
+    end
   end
 
   private
 
   # Expands the key to a linear array of 4-byte words of length
   # Nb*(Nr + 1) = 44
-  def expand_key(key_arr)
+  # @return [[a0, b0, c0, d0], [a1, b1, c1, d1]...[a43, b43, c43, d43] ]
+  def key_expansion(key_arr)
     w_key = []
     
     (0..Nk-1).each do |i|
@@ -56,8 +69,22 @@ class AES
     w_key
   end
 
+  # Expands the key to a linear array of 4-byte words of length
+  # Nb*(Nr + 1) = 44
+  def key_expansion_inv(key_arr)
+    expanded_key = key_expansion(key_arr)
+
+    # Apply InvMixColumn to all Round Keys except the first and the last one
+    mix_coled = expanded_key[1..-2].map do |word|
+      # TODO transform word using mix column
+      word
+    end
+
+    [expanded_key[0], mix_coled, expanded_key[-1]]
+  end
+
   def aes_encrypt_block(key_arr)
-    expanded_key = expand_key(key_arr) # generate key for each round
+    expanded_key = key_expansion(key_arr) # generate key for each round
 
     puts "#{0} - #{Nb - 1}" if DEBUG
     add_round_key(expanded_key[0..(Nb - 1)].flatten)
@@ -71,10 +98,36 @@ class AES
     round(expanded_key[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten, final: true)
   end
 
+  def aes_decrypt_block(key_arr)
+    expanded_key = key_expansion_inv(key_arr) # generate key for each inv round
+    expanded_key_reverse = expanded_key.reverse
+
+    puts "#{0} - #{Nb - 1}" if DEBUG
+    add_round_key(expanded_key_reverse[0..(Nb - 1)].flatten)
+
+    (1..Nr - 1).each do |i|
+      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
+      round_inv(expanded_key_reverse[Nb*i..(Nb*(i + 1) - 1)].flatten)
+    end
+
+    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
+    round_inv(
+      expanded_key_reverse[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten,
+      final: true
+    )
+  end
+
   def round(round_key_arr, final: false)
     sub_bytes
     shift_rows
     mix_cols unless final
+    add_round_key(round_key_arr)
+  end
+
+  def round_inv(round_key, final: false)
+    sub_bytes_inv
+    shift_rows_inv
+    mix_cols_inv unless final
     add_round_key(round_key_arr)
   end
 
@@ -86,7 +139,8 @@ class AES
 
   # AES inv Round 4/4
   def sub_bytes_inv
-      @state = @state.map{ |b| S_BOX_INV[b] }
+    @state = @state.map{ |b| S_BOX_INV[b] }
+    print_state(__method__) if DEBUG
   end
 
   # AES Round 2/4
@@ -105,6 +159,7 @@ class AES
       vec.to_a.rotate(col_count - idx)
     end
     @state = Matrix.rows(shifted_rows)
+    print_state(__method__) if DEBUG
   end
 
   # AES Round 3/4
@@ -146,27 +201,12 @@ class AES
     print_state(__method__) if DEBUG
   end
 
-  # AES Round 4/4
+  # AES Round 4/4 (self inverse)
   def add_round_key(round_key_arr)
     @state = @state.map.with_index do |b, idx|
       b ^ round_key_arr[idx]
     end
     print_state(__method__) if DEBUG
-  end
-
-  # AES inv Round 1/4 (self inverse)
-  def add_round_key_inv(round_key)
-    add_round_key(round_key)
-  end
-
-  def round_inv(round_key, final: false)
-    add_round_key_inv(round_key)
-    mix_cols_inv unless final
-    shift_rows_inv
-    sub_bytes_inv
-  end
-
-  def aes_decrypt_block
   end
 end
 
