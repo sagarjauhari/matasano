@@ -1,7 +1,7 @@
 require "./helpers.rb"
 require "./rijndael_tables.rb"
 
-DEBUG = true
+DEBUG = false
 
 class AES
   Nb =  4 # Number of columns in state
