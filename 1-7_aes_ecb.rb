@@ -12,44 +12,43 @@ class AES
     @state = Matrix[]    # State global var
   end
 
-  def aes_ecb_encrypt(in_file, key, out_file)
+  # @param action "encrypt" or "decrypt"
+  def process_file(action, in_file, key, out_file)
+    data = File.open(in_file, "r"){ |f| f.read }
+    processed_data = send("aes_ecb_" + action, data, key)
+
+    puts "Writing #{action}ed file (#{processed_data.length} bytes): " +
+      "#{out_file}"
+    ap processed_data if DEBUG
+    File.open(out_file, "w"){ |f| f.write(processed_data) }
+  end
+
+  def aes_ecb_encrypt(data, key)
     key_arr = key.unpack("C*")
 
-    encrypted_data = File.open(in_file, "r") do |file|
-      data = pad_data(file.read, 16)[0..127]
-
-      data.unpack("C*").each_slice(16).map do |slice|
-        state = array_to_matrix(slice)
-        aes_encrypt_block(state, key_arr)
-        matrix_to_array(state).pack("C*")
-      end
+    data = pad_data(data, 16)
+    encrypted_data = data.unpack("C*").each_slice(16).map do |slice|
+      state = array_to_matrix(slice)
+      aes_encrypt_block(state, key_arr)
+      matrix_to_array(state).pack("C*")
     end
 
-    encrypted_64 = [encrypted_data.join].pack("m")
-
-    puts "Writing encrypted file (#{encrypted_64.length} bytes): #{out_file}"
-    ap encrypted_64 if DEBUG
-    File.open(out_file, "w"){ |f| f.write(encrypted_64) }
+    # return base64 encoded data
+    [encrypted_data.join].pack("m")
   end
 
-  def aes_ecb_decrypt(in_file, key, out_file)
+  def aes_ecb_decrypt(data, key)
     key_arr = key.unpack("C*")
 
-    decrypted_data = File.open(in_file, "r") do |file|
-      data = file.read.unpack("m").first.unpack("C*")
-
-      data.each_slice(16).map do |slice|
-        state = array_to_matrix(slice)
-        aes_decrypt_block(state, key_arr)
-        matrix_to_array(state).pack("C*")
-      end
+    data = data.unpack("m").first.unpack("C*")
+    decrypted_data = data.each_slice(16).map do |slice|
+      state = array_to_matrix(slice)
+      aes_decrypt_block(state, key_arr)
+      matrix_to_array(state).pack("C*")
     end.join
 
-    puts "Writing decrypted file (#{decrypted_data.length} bytes): #{out_file}"
-    File.open(out_file, "w"){ |f| f.write(decrypted_data) }
+    decrypted_data
   end
-
-  private
 
   # Expands the key to a linear array of 4-byte words of length
   # Nb*(Nr + 1) = 44
@@ -231,8 +230,8 @@ class AES
   end
 end
 
-
-# AES.new.aes_ecb_encrypt(
+# AES.new.process_file(
+#   "encrypt",
 #   "1-7_test_plain_text.txt",
 #   "YELLOW SUBMARINE",
 #   "1-7_test_encrypted.txt"
