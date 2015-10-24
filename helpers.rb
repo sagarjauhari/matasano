@@ -61,9 +61,9 @@ end
 
 
 # Prints the state
-def print_state(method_name)
+def print_state(state, method_name)
   puts "\tMethod: #{method_name}"
-  @state.row_vectors.each do |vec|
+  state.row_vectors.each do |vec|
     puts "\t" + vec.to_a.join("\t")
   end
   puts

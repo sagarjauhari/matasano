@@ -1,7 +1,7 @@
 require "./helpers.rb"
 require "./rijndael_tables.rb"
 
-DEBUG = false
+DEBUG = true
 
 class AES
   Nb =  4 # Number of columns in state
@@ -19,15 +19,16 @@ class AES
       data = pad_data(file.read, 16)[0..127]
 
       data.unpack("C*").each_slice(16).map do |slice|
-        @state = array_to_matrix(slice)
-        aes_encrypt_block(key_arr)
-        matrix_to_array(@state).pack("C*")
+        state = array_to_matrix(slice)
+        aes_encrypt_block(state, key_arr)
+        matrix_to_array(state).pack("C*")
       end
     end
 
     encrypted_64 = [encrypted_data.join].pack("m")
 
     puts "Writing encrypted file (#{encrypted_64.length} bytes): #{out_file}"
+    ap encrypted_64 if DEBUG
     File.open(out_file, "w"){ |f| f.write(encrypted_64) }
   end
 
@@ -38,9 +39,9 @@ class AES
       data = file.read.unpack("m").first.unpack("C*")
 
       data.each_slice(16).map do |slice|
-        @state = array_to_matrix(slice)
-        aes_decrypt_block(key_arr)
-        matrix_to_array(@state).pack("C*")
+        state = array_to_matrix(slice)
+        aes_decrypt_block(state, key_arr)
+        matrix_to_array(state).pack("C*")
       end
     end.join
 
@@ -91,93 +92,98 @@ class AES
       expanded_key[Nb*Nr..Nb*(Nr+1)-1]
   end
 
-  def aes_encrypt_block(key_arr)
+  def aes_encrypt_block(state, key_arr)
     expanded_key = key_expansion(key_arr) # generate key for each round
 
     puts "#{0} - #{Nb - 1}" if DEBUG
-    add_round_key(expanded_key[0..(Nb - 1)].flatten)
+    add_round_key(state, expanded_key[0..(Nb - 1)].flatten)
 
     (1..Nr - 1).each do |i|
       puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
-      round(expanded_key[Nb*i..(Nb*(i + 1) - 1)].flatten)
+      round(state, expanded_key[Nb*i..(Nb*(i + 1) - 1)].flatten)
     end
 
     puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
-    round(expanded_key[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten, final: true)
+    round(state, expanded_key[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten, final: true)
   end
 
-  def aes_decrypt_block(key_arr)
+  def aes_decrypt_block(state, key_arr)
     expanded_key = key_expansion_inv(key_arr) # generate key for each inv round
     # TODO Reverse all the words, or reverse all keys keeping order of words
     # intact?
     expanded_key_reverse = expanded_key.reverse
 
     puts "#{0} - #{Nb - 1}" if DEBUG
-    add_round_key(expanded_key_reverse[0..(Nb - 1)].flatten)
+    add_round_key(state, expanded_key_reverse[0..(Nb - 1)].flatten)
 
     (1..Nr - 1).each do |i|
       puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
-      round_inv(expanded_key_reverse[Nb*i..(Nb*(i + 1) - 1)].flatten)
+      round_inv(state, expanded_key_reverse[Nb*i..(Nb*(i + 1) - 1)].flatten)
     end
 
     puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
     round_inv(
+      state,
       expanded_key_reverse[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten,
       final: true
     )
   end
 
-  def round(round_key_arr, final: false)
-    sub_bytes
-    shift_rows
-    mix_cols unless final
-    add_round_key(round_key_arr)
+  def round(state, round_key_arr, final: false)
+    state = sub_bytes(state)
+    state = shift_rows(state)
+    state = mix_cols(state) unless final
+    state = add_round_key(state, round_key_arr)
   end
 
-  def round_inv(round_key_arr, final: false)
-    sub_bytes_inv
-    shift_rows_inv
+  def round_inv(state, round_key_arr, final: false)
+    state = sub_bytes_inv(state)
+    state = shift_rows_inv(state)
     unless final
-      @state = Matrix.columns(mix_cols_inv(@state.column_vectors))
+      state = Matrix.columns(mix_cols_inv(state.column_vectors))
     end
-    add_round_key(round_key_arr)
+    state = add_round_key(state, round_key_arr)
   end
 
   # AES Round 1/4
-  def sub_bytes
-    @state = @state.map{ |b| S_BOX[b] }
-    print_state(__method__) if DEBUG
+  def sub_bytes(state)
+    state = state.map{ |b| S_BOX[b] }
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES inv Round 4/4
-  def sub_bytes_inv
-    @state = @state.map{ |b| S_BOX_INV[b] }
-    print_state(__method__) if DEBUG
+  def sub_bytes_inv(state)
+    state = state.map{ |b| S_BOX_INV[b] }
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES Round 2/4
-  def shift_rows
-    shifted_rows = @state.row_vectors.map.with_index do |vec, idx|
+  def shift_rows(state)
+    shifted_rows = state.row_vectors.map.with_index do |vec, idx|
       vec.to_a.rotate(idx)
     end
-    @state = Matrix.rows(shifted_rows)
-    print_state(__method__) if DEBUG
+    state = Matrix.rows(shifted_rows)
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES inv Round 3/4
-  def shift_rows_inv
-    col_count = @state.column_count
-    shifted_rows = @state.row_vectors.map.with_index do |vec, idx|
+  def shift_rows_inv(state)
+    col_count = state.column_count
+    shifted_rows = state.row_vectors.map.with_index do |vec, idx|
       vec.to_a.rotate(col_count - idx)
     end
-    @state = Matrix.rows(shifted_rows)
-    print_state(__method__) if DEBUG
+    state = Matrix.rows(shifted_rows)
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES Round 3/4
   # https://en.wikipedia.org/wiki/Rijndael_mix_columns
-  def mix_cols
-    mixed_cols = @state.column_vectors.map do |a|
+  def mix_cols(state)
+    mixed_cols = state.column_vectors.map do |a|
       # 'b' stores each element in 'a' multiplied by 2 in GF(2^8)
       b = a.map{ |val| GALIOS_MUL_2[val] }
 
@@ -188,8 +194,9 @@ class AES
         b[3] ^ a[2] ^ a[1] ^ b[0] ^ a[0]  # 2*a3 + a2 + a1 + 3*a0
       ]
     end
-    @state = Matrix.columns(mixed_cols)
-    print_state(__method__) if DEBUG
+    state = Matrix.columns(mixed_cols)
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES inv Round 2/4. Also used in key_expansion_inv
@@ -215,11 +222,12 @@ class AES
   end
 
   # AES Round 4/4 (self inverse)
-  def add_round_key(round_key_arr)
-    @state = @state.map.with_index do |b, idx|
+  def add_round_key(state, round_key_arr)
+    state = state.map.with_index do |b, idx|
       b ^ round_key_arr[idx]
     end
-    print_state(__method__) if DEBUG
+    print_state(state, __method__) if DEBUG
+    state
   end
 end
 
@@ -230,8 +238,8 @@ end
 #   "1-7_test_encrypted.txt"
 # )
 
-AES.new.aes_ecb_decrypt(
-  "1-7_test_encrypted.txt",
-  "YELLOW SUBMARINE",
-  "1-7_test_decrypted.txt"
-)
+# AES.new.aes_ecb_decrypt(
+#   "1-7_test_encrypted.txt",
+#   "YELLOW SUBMARINE",
+#   "1-7_test_decrypted.txt"
+# )
