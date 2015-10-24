@@ -27,23 +27,25 @@ class AES
 
     encrypted_64 = [encrypted_data.join].pack("m")
 
-    puts "Writing encrypted file: #{out_file}"
+    puts "Writing encrypted file (#{encrypted_64.length} bytes): #{out_file}"
     File.open(out_file, "w"){ |f| f.write(encrypted_64) }
   end
 
-  def aes_ecb_decrypt(filename, key)
+  def aes_ecb_decrypt(in_file, key, out_file)
     key_arr = key.unpack("C*")
 
-    File.open(filename, "r") do |file|
-      data = pad_data(file.read, 16)[0..127]
-      data.unpack("C*").each_slice(16).map do |slice|
+    decrypted_data = File.open(in_file, "r") do |file|
+      data = file.read.unpack("m").first.unpack("C*")
+
+      data.each_slice(16).map do |slice|
         @state = array_to_matrix(slice)
-
-        aes_encrypt_block(key_arr)
-
-        ap matrix_to_array(@state).pack("C*")
+        aes_decrypt_block(key_arr)
+        matrix_to_array(@state).pack("C*")
       end
-    end
+    end.join
+
+    puts "Writing decrypted file (#{decrypted_data.length} bytes): #{out_file}"
+    File.open(out_file, "w"){ |f| f.write(decrypted_data) }
   end
 
   private
@@ -75,17 +77,18 @@ class AES
 
   # Expands the key to a linear array of 4-byte words of length
   # Nb*(Nr + 1) = 44
+  # @return [[a0, b0, c0, d0], [a1, b1, c1, d1]...[a43, b43, c43, d43] ]
   def key_expansion_inv(key_arr)
     expanded_key = key_expansion(key_arr)
 
     # Apply InvMixColumn to all Round Keys except the first and the last one
-    mix_coled = expanded_key[1..-2].map do |word|
-      # TODO transform word using mix column
-      ap word
-      word
+    mix_colled = expanded_key[Nb..Nb*Nr-1].each_slice(4).map do |key|
+      mix_cols_inv(key)
     end
 
-    [expanded_key[0], mix_coled, expanded_key[-1]]
+    expanded_key[0..Nb-1] +
+      mix_colled.reduce(&:+) + # Concatenate all keys together into 36 words
+      expanded_key[Nb*Nr..Nb*(Nr+1)-1]
   end
 
   def aes_encrypt_block(key_arr)
@@ -131,7 +134,7 @@ class AES
     add_round_key(round_key_arr)
   end
 
-  def round_inv(round_key, final: false)
+  def round_inv(round_key_arr, final: false)
     sub_bytes_inv
     shift_rows_inv
     unless final
@@ -221,13 +224,14 @@ class AES
 end
 
 
-AES.new.aes_ecb_encrypt(
-  "1-7_test_plain_text.txt",
-  "YELLOW SUBMARINE",
-  "1-7_test_encrypted.txt"
-)
-
 # AES.new.aes_ecb_encrypt(
 #   "1-7_test_plain_text.txt",
-#   "YELLOW SUBMARINE"
+#   "YELLOW SUBMARINE",
+#   "1-7_test_encrypted.txt"
 # )
+
+AES.new.aes_ecb_decrypt(
+  "1-7_test_encrypted.txt",
+  "YELLOW SUBMARINE",
+  "1-7_test_decrypted.txt"
+)
