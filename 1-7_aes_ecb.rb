@@ -12,19 +12,23 @@ class AES
     @state = Matrix[]    # State global var
   end
 
-  def aes_ecb_encrypt(filename, key)
+  def aes_ecb_encrypt(in_file, key, out_file)
     key_arr = key.unpack("C*")
 
-    File.open(filename, "r") do |file|
+    encrypted_data = File.open(in_file, "r") do |file|
       data = pad_data(file.read, 16)[0..127]
+
       data.unpack("C*").each_slice(16).map do |slice|
         @state = array_to_matrix(slice)
-
         aes_encrypt_block(key_arr)
-
-        ap matrix_to_array(@state).pack("C*")
+        matrix_to_array(@state).pack("C*")
       end
     end
+
+    encrypted_64 = [encrypted_data.join].pack("m")
+
+    puts "Writing encrypted file: #{out_file}"
+    File.open(out_file, "w"){ |f| f.write(encrypted_64) }
   end
 
   def aes_ecb_decrypt(filename, key)
@@ -77,6 +81,7 @@ class AES
     # Apply InvMixColumn to all Round Keys except the first and the last one
     mix_coled = expanded_key[1..-2].map do |word|
       # TODO transform word using mix column
+      ap word
       word
     end
 
@@ -100,6 +105,8 @@ class AES
 
   def aes_decrypt_block(key_arr)
     expanded_key = key_expansion_inv(key_arr) # generate key for each inv round
+    # TODO Reverse all the words, or reverse all keys keeping order of words
+    # intact?
     expanded_key_reverse = expanded_key.reverse
 
     puts "#{0} - #{Nb - 1}" if DEBUG
@@ -127,7 +134,9 @@ class AES
   def round_inv(round_key, final: false)
     sub_bytes_inv
     shift_rows_inv
-    mix_cols_inv unless final
+    unless final
+      @state = Matrix.columns(mix_cols_inv(@state.column_vectors))
+    end
     add_round_key(round_key_arr)
   end
 
@@ -180,9 +189,11 @@ class AES
     print_state(__method__) if DEBUG
   end
 
-  # AES inv Round 2/4
-  def mix_cols_inv
-    mixed_cols = @state.column_vectors.map do |a|
+  # AES inv Round 2/4. Also used in key_expansion_inv
+  # @param vectors Nb vectors: [v_1[a,b,c,d],..v_Nb[w,x,y,z]]
+  # @return Nb vectors: [v1[e,f,g,h],..vNb[s,t,u,v]]
+  def mix_cols_inv(vectors)
+    mixed_cols = vectors.map do |a|
       [
         GALIOS_MUL_14[a[0]] ^ GALIOS_MUL_11[a[1]] ^
         GALIOS_MUL_13[a[2]] ^ GALIOS_MUL_9[a[3]],
@@ -197,8 +208,7 @@ class AES
         GALIOS_MUL_9[a[2]] ^ GALIOS_MUL_14[a[3]]
       ]
     end
-    @state = Matrix.columns(mixed_cols)
-    print_state(__method__) if DEBUG
+    mixed_cols
   end
 
   # AES Round 4/4 (self inverse)
@@ -210,7 +220,14 @@ class AES
   end
 end
 
+
 AES.new.aes_ecb_encrypt(
   "1-7_test_plain_text.txt",
-  "YELLOW SUBMARINE"
+  "YELLOW SUBMARINE",
+  "1-7_test_encrypted.txt"
 )
+
+# AES.new.aes_ecb_encrypt(
+#   "1-7_test_plain_text.txt",
+#   "YELLOW SUBMARINE"
+# )
