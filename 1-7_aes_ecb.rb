@@ -222,16 +222,11 @@ class AES
 
   # AES Round 4/4 (self inverse)
   def add_round_key(state, round_key_arr)
-    # State is column dominant matrix, so the round key arry should also be
-    # transposed so that increasing the index in the array corresponds to
-    # traversing the state matrix column-wise
-    transposed_key_arr =  array_to_matrix(round_key_arr).
-      row_vectors.
-      map(&:to_a).
-      flatten
-    state = state.map.with_index do |b, idx|
-      b ^ transposed_key_arr[idx]
+    key_matrix =  array_to_matrix(round_key_arr)
+    state = Matrix.build(Nb, Nk) do |row, col|
+      state[row, col] ^ key_matrix[row, col]
     end
+
     print_state(state, __method__) if DEBUG
     state
   end

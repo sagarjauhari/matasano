@@ -81,4 +81,7 @@ describe "AES" do
       ])
     )
   end
+
+  it "expands key correctly" do
+  end
 end
