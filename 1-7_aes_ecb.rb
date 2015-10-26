@@ -29,8 +29,8 @@ class AES
     data = pad_data(data, 16)
     encrypted_data = data.unpack("C*").each_slice(16).map do |slice|
       state = array_to_matrix(slice)
-      aes_encrypt_block(state, key_arr)
-      matrix_to_array(state).pack("C*")
+      encrypted_state = aes_encrypt_block(state, key_arr)
+      matrix_to_array(encrypted_state).pack("C*")
     end
 
     # return base64 encoded data
@@ -43,16 +43,16 @@ class AES
     data = data.unpack("m").first.unpack("C*")
     decrypted_data = data.each_slice(16).map do |slice|
       state = array_to_matrix(slice)
-      aes_decrypt_block(state, key_arr)
-      matrix_to_array(state).pack("C*")
+      decrypted_state = aes_decrypt_block(state, key_arr)
+      matrix_to_array(decrypted_state).pack("C*")
     end.join
 
     decrypted_data
   end
 
   # Expands the key to a linear array of 4-byte words of length
-  # Nb*(Nr + 1) = 44
-  # @return [[a0, b0, c0, d0], [a1, b1, c1, d1]...[a43, b43, c43, d43] ]
+  # Nb*(Nr + 1) = 44 and then packes them in a matrix
+  # @return [Matrix0, Matrix1...Matrix10 ]
   def key_expansion(key_arr)
     w_key = []
     
@@ -63,84 +63,72 @@ class AES
     (Nk..(Nb*(Nr + 1) - 1)).each do |i|
       temp = w_key[i-1]
       if i % Nk == 0
-        temp = temp.
-          rotate.
-          map{ |b| S_BOX[b] }.
-          map.with_index{ |b, i| b ^ RCON[i / Nk] }
+        temp = temp.rotate.map{ |b| S_BOX[b] }
+        temp[0] ^= RCON[i / Nk]
       end
 
       w_key << w_key[i - Nk].map.with_index{ |b, i| b ^ temp[i]}
     end
 
-    w_key
+    w_key.each_slice(4).map{ |k| array_to_matrix(k.flatten) }
   end
 
   # Expands the key to a linear array of 4-byte words of length
   # Nb*(Nr + 1) = 44
-  # @return [[a0, b0, c0, d0], [a1, b1, c1, d1]...[a43, b43, c43, d43] ]
+  # @return [Matrix0, Matrix1...Matrix10 ]
   def key_expansion_inv(key_arr)
     expanded_key = key_expansion(key_arr)
 
     # Apply InvMixColumn to all Round Keys except the first and the last one
-    mix_colled = expanded_key[Nb..Nb*Nr-1].each_slice(4).map do |key|
+    mix_colled = expanded_key[1..-2].map do |key|
       mix_cols_inv(key)
     end
 
-    expanded_key[0..Nb-1] +
-      mix_colled.reduce(&:+) + # Concatenate all keys together into 36 words
-      expanded_key[Nb*Nr..Nb*(Nr+1)-1]
+    [expanded_key[0]] + mix_colled + [expanded_key[-1]]
   end
 
   def aes_encrypt_block(state, key_arr)
     expanded_key = key_expansion(key_arr) # generate key for each round
 
-    puts "#{0} - #{Nb - 1}" if DEBUG
-    add_round_key(state, expanded_key[0..(Nb - 1)].flatten)
+    puts "Key 0" if DEBUG
+    state = add_round_key(state, expanded_key[0])
 
     (1..Nr - 1).each do |i|
-      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
-      round(state, expanded_key[Nb*i..(Nb*(i + 1) - 1)].flatten)
+      puts "Key #{i}" if DEBUG
+      state = round(state, expanded_key[i])
     end
 
-    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
-    round(state, expanded_key[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten, final: true)
+    puts "Key #{Nr}" if DEBUG
+    state = round(state, expanded_key[Nr], final: true)
   end
 
   def aes_decrypt_block(state, key_arr)
     expanded_key = key_expansion_inv(key_arr) # generate key for each inv round
-    # TODO Reverse all the words, or reverse all keys keeping order of words
-    # intact?
     expanded_key_reverse = expanded_key.reverse
 
-    puts "#{0} - #{Nb - 1}" if DEBUG
-    add_round_key(state, expanded_key_reverse[0..(Nb - 1)].flatten)
+    puts "Key 0" if DEBUG
+    state = add_round_key(state, expanded_key_reverse[0])
 
     (1..Nr - 1).each do |i|
-      puts "#{Nb*i} - #{(Nb*(i + 1) - 1)}" if DEBUG
-      round_inv(state, expanded_key_reverse[Nb*i..(Nb*(i + 1) - 1)].flatten)
+      puts "Key #{i}" if DEBUG
+      state = round_inv(state, expanded_key_reverse[i])
     end
 
-    puts "#{Nb*Nr} - #{(Nb*(Nr + 1) - 1)}" if DEBUG
-    round_inv(
-      state,
-      expanded_key_reverse[Nb*Nr..(Nb*(Nr + 1) - 1)].flatten,
-      final: true
-    )
+    puts "Key #{Nr}" if DEBUG
+    state = round_inv(state, expanded_key_reverse[Nr], final: true)
   end
 
-  def round(state, round_key_arr, final: false)
+  def round(state, round_key, final: false)
     state = sub_bytes(state)
     state = shift_rows(state)
     state = mix_cols(state) unless final
-    state = add_round_key(state, round_key_arr)
+    state = add_round_key(state, round_key)
   end
 
   def round_inv(state, round_key_arr, final: false)
     state = sub_bytes_inv(state)
     state = shift_rows_inv(state)
-    unless final
-      state = Matrix.columns(mix_cols_inv(state.column_vectors))
-    end
+    state = mix_cols_inv(state) unless final
     state = add_round_key(state, round_key_arr)
   end
 
@@ -170,9 +158,8 @@ class AES
 
   # AES inv Round 3/4
   def shift_rows_inv(state)
-    col_count = state.column_count
     shifted_rows = state.row_vectors.map.with_index do |vec, idx|
-      vec.to_a.rotate(col_count - idx)
+      vec.to_a.rotate(-1*idx)
     end
     state = Matrix.rows(shifted_rows)
     print_state(state, __method__) if DEBUG
@@ -201,8 +188,8 @@ class AES
   # AES inv Round 2/4. Also used in key_expansion_inv
   # @param vectors Nb vectors: [v_1[a,b,c,d],..v_Nb[w,x,y,z]]
   # @return Nb vectors: [v1[e,f,g,h],..vNb[s,t,u,v]]
-  def mix_cols_inv(vectors)
-    mixed_cols = vectors.map do |a|
+  def mix_cols_inv(state)
+    mixed_cols = state.column_vectors.map do |a|
       [
         GALIOS_MUL_14[a[0]] ^ GALIOS_MUL_11[a[1]] ^
         GALIOS_MUL_13[a[2]] ^ GALIOS_MUL_9[a[3]],
@@ -217,30 +204,38 @@ class AES
         GALIOS_MUL_9[a[2]] ^ GALIOS_MUL_14[a[3]]
       ]
     end
-    mixed_cols
+    state = Matrix.columns(mixed_cols)
+    print_state(state, __method__) if DEBUG
+    state
   end
 
   # AES Round 4/4 (self inverse)
-  def add_round_key(state, round_key_arr)
-    key_matrix =  array_to_matrix(round_key_arr)
+  def add_round_key(state, round_key)
     state = Matrix.build(Nb, Nk) do |row, col|
-      state[row, col] ^ key_matrix[row, col]
+      state[row, col] ^ round_key[row, col]
     end
-
     print_state(state, __method__) if DEBUG
     state
   end
 end
 
-# AES.new.process_file(
-#   "encrypt",
-#   "1-7_test_plain_text.txt",
-#   "YELLOW SUBMARINE",
-#   "1-7_test_encrypted.txt"
-# )
+AES.new.process_file(
+  "encrypt",
+  "1-7_test_plain_text.txt",
+  "YELLOW SUBMARINE",
+  "1-7_test_encrypted.txt"
+)
 
-# AES.new.aes_ecb_decrypt(
-#   "1-7_test_encrypted.txt",
-#   "YELLOW SUBMARINE",
-#   "1-7_test_decrypted.txt"
-# )
+AES.new.process_file(
+  "decrypt",
+  "1-7_test_encrypted.txt",
+  "YELLOW SUBMARINE",
+  "1-7_test_decrypted.txt"
+)
+
+AES.new.process_file(
+  "decrypt",
+  "1-7_data.txt",
+  "YELLOW SUBMARINE",
+  "1-7_data_decrypted.txt"
+)
