@@ -219,23 +219,23 @@ class AES
   end
 end
 
-AES.new.process_file(
-  "encrypt",
-  "1-7_test_plain_text.txt",
-  "YELLOW SUBMARINE",
-  "1-7_test_encrypted.txt"
-)
+# AES.new.process_file(
+#   "encrypt",
+#   "data/1-7_test_plain_text.txt",
+#   "YELLOW SUBMARINE",
+#   "data/1-7_test_encrypted.txt"
+# )
 
-AES.new.process_file(
-  "decrypt",
-  "1-7_test_encrypted.txt",
-  "YELLOW SUBMARINE",
-  "1-7_test_decrypted.txt"
-)
+# AES.new.process_file(
+#   "decrypt",
+#   "data/1-7_test_encrypted.txt",
+#   "YELLOW SUBMARINE",
+#   "data/1-7_test_decrypted.txt"
+# )
 
-AES.new.process_file(
-  "decrypt",
-  "1-7_data.txt",
-  "YELLOW SUBMARINE",
-  "1-7_data_decrypted.txt"
-)
+# AES.new.process_file(
+#   "decrypt",
+#   "data/1-7_data.txt",
+#   "YELLOW SUBMARINE",
+#   "data/1-7_data_decrypted.txt"
+# )
