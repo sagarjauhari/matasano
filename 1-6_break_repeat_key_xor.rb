@@ -99,12 +99,12 @@ def key_size_stats(data)
         i < (data.length / (2 * key_size))
       end.
       map do |slice_arr, i|
-      slice = slice_arr.join
-      chunk_1 = slice[0..key_size-1]
-      chunk_2 = slice[key_size..2*key_size-1]
+        slice = slice_arr.join
+        chunk_1 = slice[0..key_size-1]
+        chunk_2 = slice[key_size..2*key_size-1]
 
-      hamming_dist(chunk_1, chunk_2).to_f / key_size
-    end
+        hamming_dist(chunk_1, chunk_2).to_f / key_size
+      end
 
     avg_dist = dists.inject(&:+) / dists.count
 
@@ -157,5 +157,4 @@ def decrypt_64file(filename, key)
 end
 
 
-break_repeat_key_xor("./1-6_data.txt")
-
+# break_repeat_key_xor("./1-6_data.txt")

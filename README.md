@@ -9,7 +9,7 @@ Some of the modules have spec files which can be run using `bacon`. Sample
 output:
 
 ```
-❯❯❯ bacon 1-7_aes_ecb_spec.rb
+❯❯❯ bacon *_spec.rb
 AES
   - ecrypts data correctly
   - decrypts data correctly
