@@ -42,6 +42,11 @@ def hex_to_base64(str)
 end
 
 ############# AES Helpers #############
+# Generate random string of n bytes
+def random_str(n_bytes)
+  (0..255).to_a.sample(n_bytes).map(&:chr).join
+end
+
 # Pad the plain text if needed to fill blocks of size 'n'
 def pad_data(text, block_size)
   n_missing = (text.length % block_size > 0) ? block_size - (text.length % block_size) : 0

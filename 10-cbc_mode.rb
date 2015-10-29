@@ -20,6 +20,9 @@
 
 require "./1-7_aes_ecb.rb"
 
+# Add methods to the existing AES class to do encryption/decryption in
+# CBC mode
+# TODO Add tests
 class AES
   # @param action [String] "encrypt" or "decrypt"
   # @param iv [String] initiation vector
@@ -32,11 +35,14 @@ class AES
     File.open(out_file, "w"){ |f| f.write(processed_data) }
   end
 
+  # @param key [String] 16 byte block
+  # @param iv [String] 16 byte block
   def aes_cbc_encrypt(data, key, iv)
     key_arr = key.unpack("C*")
+    iv_arr = iv.unpack("C*")
 
     data = pad_data(data, 16)
-    last_cipher_block = array_to_matrix(iv) # Initialize with IV
+    last_cipher_block = array_to_matrix(iv_arr) # Initialize with IV
     encrypted_data = data.unpack("C*").each_slice(16).map do |slice|
       state = array_to_matrix(slice)
       
@@ -53,11 +59,14 @@ class AES
     [encrypted_data.join].pack("m")
   end
 
+  # @param key [String] 16 byte block
+  # @param iv [String] 16 byte block
   def aes_cbc_decrypt(data, key, iv)
     key_arr = key.unpack("C*")
+    iv_arr = iv.unpack("C*")
 
     data = data.unpack("m").first.unpack("C*")
-    last_cipher_block = array_to_matrix(iv) # Initialize with IV
+    last_cipher_block = array_to_matrix(iv_arr) # Initialize with IV
 
     decrypted_data = data.each_slice(16).map do |slice|
       state = array_to_matrix(slice)
@@ -74,10 +83,10 @@ class AES
   end
 end
 
-AES.new.process_file_cbc(
-  "decrypt",
-  "./data/2-10_data.txt",
-  "YELLOW SUBMARINE",
-  [0]*16,
-  "./data/2-10_data_decrypted.txt"
-)
+# AES.new.process_file_cbc(
+#   "decrypt",
+#   "./data/2-10_data.txt",
+#   "YELLOW SUBMARINE",
+#   ([0]*16).map(&:chr).join,
+#   "./data/2-10_data_decrypted.txt"
+# )
