@@ -49,6 +49,13 @@ def pad_data(text, block_size)
   text
 end
 
+# Pad a block of data with n times with n where n is the difference between
+# 'size' and block's current size
+def pad_block(block, size)
+  n = size - block.length
+  block << ([n]*n).pack("C*")
+end
+
 # Returns a column major matrix for the array
 def array_to_matrix(a)
   Matrix.build(4, 4){ |x, y| a[4*y + x]}
