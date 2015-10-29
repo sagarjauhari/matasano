@@ -27,7 +27,7 @@ class AES
   end
 
   # @param action "encrypt" or "decrypt"
-  def process_file(action, in_file, key, out_file)
+  def process_file_ecb(action, in_file, key, out_file)
     data = File.open(in_file, "r"){ |f| f.read }
     processed_data = send("aes_ecb_" + action, data, key)
 
@@ -233,21 +233,21 @@ class AES
   end
 end
 
-# AES.new.process_file(
+# AES.new.process_file_ecb(
 #   "encrypt",
 #   "data/1-7_test_plain_text.txt",
 #   "YELLOW SUBMARINE",
 #   "data/1-7_test_encrypted.txt"
 # )
 
-# AES.new.process_file(
+# AES.new.process_file_ecb(
 #   "decrypt",
 #   "data/1-7_test_encrypted.txt",
 #   "YELLOW SUBMARINE",
 #   "data/1-7_test_decrypted.txt"
 # )
 
-# AES.new.process_file(
+# AES.new.process_file_ecb(
 #   "decrypt",
 #   "data/1-7_data.txt",
 #   "YELLOW SUBMARINE",
