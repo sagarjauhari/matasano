@@ -20,4 +20,4 @@ def detect_aes_ecb(filename)
   end
 end
 
-detect_aes_ecb("./data/1-8_data.txt")
+# detect_aes_ecb("./data/1-8_data.txt")

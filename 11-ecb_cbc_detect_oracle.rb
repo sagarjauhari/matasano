@@ -26,7 +26,9 @@
 require "./10-cbc_mode.rb"
 
 class AES
-  def encryption_oracle(in_file, out_file)
+  # Randomly selects a key and mode (cbc/ecb) and encrypts the data
+  # @return [String] encrypted data
+  def encryption_oracle(in_file)
     data = File.open(in_file, "r"){ |f| f.read }
     
     key = random_str(16)          # Generate random key
@@ -34,8 +36,8 @@ class AES
     mode = ["ecb", "cbc"].sample  # Choose random mode
 
     # Append 5-10 bytes of random data before and after the input
-    data = (0..255).to_a.sample((5..10).to_a.sample).map(&:chr).join + data
-    data = data + (0..255).to_a.sample((5..10).to_a.sample).map(&:chr).join
+    data = random_str((5..10).to_a.sample) + data
+    data = data + random_str((5..10).to_a.sample)
     
     if mode == "ecb"
       encrypted_data = aes_ecb_encrypt(data, key)
@@ -45,13 +47,19 @@ class AES
       raise "Unknown mode: #{mode}"
     end
 
-    puts "Writing encrypted file (size: #{encrypted_data.length} bytes, mode: " +
-    "\"#{mode}\"): #{out_file}"
-    File.open(out_file, "w"){ |f| f.write(encrypted_data) }
+    puts "Encryption mode used: #{mode}"
+    encrypted_data
+  end
+
+  # Detects the mode in which the data has been encrypted
+  def decryption_oracle(data)
+    blocks = data.unpack("m")[0].scan(/.{1,16}/)
+    n_diff = blocks.count - blocks.uniq.count
+
+    puts "#{n_diff} repeated blocks"
+    detected_mode = n_diff > 0 ? "ecb" : "cbc"
   end
 end
 
-AES.new.encryption_oracle(
-  "./data/1-7_test_plain_text.txt",
-  "./data/11-test_encrypted_random_mode.txt"
-)
+encrypted = AES.new.encryption_oracle("./data/1-7_test_plain_text.txt")
+puts AES.new.decryption_oracle(encrypted)

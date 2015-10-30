@@ -50,7 +50,7 @@ end
 # Pad the plain text if needed to fill blocks of size 'n'
 def pad_data(text, block_size)
   n_missing = (text.length % block_size > 0) ? block_size - (text.length % block_size) : 0
-  n_missing.times{ text << " " }
+  n_missing.times{ text << n_missing.chr }
   text
 end
 
