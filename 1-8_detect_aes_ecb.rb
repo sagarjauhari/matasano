@@ -10,7 +10,7 @@ require "./helpers.rb"
 def detect_aes_ecb(filename)
   lines = File.open(filename, "r").map{|l| l}
 
-  blocks = lines.map { |line| line.strip.scan(/.{1,32}/) }
+  blocks = lines.map { |line| line.strip.scan(/.{1,16}/) }
 
   blocks.map(&:uniq).each_with_index do |l, idx|
     if l.count != 10

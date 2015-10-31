@@ -52,14 +52,16 @@ class AES
   end
 
   # Detects the mode in which the data has been encrypted
+  # @param data [String] Base64 encoded
   def decryption_oracle(data)
     blocks = data.unpack("m")[0].scan(/.{1,16}/)
     n_diff = blocks.count - blocks.uniq.count
 
     puts "#{n_diff} repeated blocks"
     detected_mode = n_diff > 0 ? "ecb" : "cbc"
+    puts "\"#{detected_mode}\" mode detected"
   end
 end
 
-encrypted = AES.new.encryption_oracle("./data/1-7_test_plain_text.txt")
-puts AES.new.decryption_oracle(encrypted)
+# encrypted = AES.new.encryption_oracle("./data/1-7_test_plain_text.txt")
+# puts AES.new.decryption_oracle(encrypted)

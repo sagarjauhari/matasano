@@ -37,6 +37,7 @@ class AES
     File.open(out_file, "w"){ |f| f.write(processed_data) }
   end
 
+  # Encrypts data using AES ECB with key and Base64s it
   def aes_ecb_encrypt(data, key)
     key_arr = key.unpack("C*")
 
