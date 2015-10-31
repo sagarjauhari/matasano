@@ -75,9 +75,15 @@ end
 # 'encrypted_profile'
 
 def decrypt_profile
-  ap pm.encrypt_profile("a@a.com")
+  pm = ProfileMaker.new
+  detect_block_size(pm)
 end
 
+# Now this is a much better way to detect block size unlike what I did
+# in challenge 12.
+# Assumptions:
+# - encryption mode is ECB. Because only then can we get deterministic cipher
+#   block which repeats
 def detect_block_size(pm)
   print "Detecting block size: "
   block_size = 0
@@ -102,16 +108,15 @@ def detect_block_size(pm)
     if block_size > 0
       puts "*"
       puts "Found block size: #{block_size}"
-      break
+      return block_size
     end
     print "."
   end
 
-  block_size
+  raise "Block size not detected"
 end
 
-pm = ProfileMaker.new
-detect_block_size(pm)
+decrypt_profile
 
 # cipher64_decrypted = AES.new.aes_ecb_decrypt(cipher64, key)
 
