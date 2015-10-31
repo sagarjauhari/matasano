@@ -53,6 +53,13 @@ def decrypt_unknown_str(unknown_str)
   # Start with "A" and keep encrypting "AA", "AAA".. and so on. The moment the
   # second half of the cipher text is the same as when "A" was encrypted: the
   # block size is 1 less than that size
+  # UPDATE: Easier way, just keep encrypting with increasing length and find
+  # when there are 2 contiguous repeating blocks. half of that index is block
+  # size - well, not exactly: this will happen only in best case scenario when
+  # the function is not adding anything before/after the plain text
+  # In each iteration scan from 1 to (i/2) and see if there is any repeating
+  # block
+
   cipher_a = encrypt_after_append("A", "").unpack("m")[0]
   block_size = 0
   print "Detecting block size "

@@ -52,6 +52,8 @@ class AES
     [encrypted_data.join].pack("m")
   end
 
+  # @param data [String] Base64 cipher text
+  # @param key [String] Plain text key string
   def aes_ecb_decrypt(data, key)
     key_arr = key.unpack("C*")
 
