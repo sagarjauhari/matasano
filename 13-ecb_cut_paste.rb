@@ -53,6 +53,10 @@ class ProfileMaker
     AES.new.aes_ecb_encrypt(profile_for(email), @key)
   end
 
+  def decrypt_profile(cipher_txt)
+    k_v_parse(AES.new.aes_ecb_decrypt(cipher_txt, @key))
+  end
+
   private
 
   def k_v_parse(str)
@@ -76,7 +80,38 @@ end
 
 def decrypt_profile
   pm = ProfileMaker.new
-  detect_block_size(pm)
+  block_size = detect_block_size(pm)
+
+  # I need to generate a block for admin by setting the email and I know that
+  # any '=' or '&' in the email will be eaten up. Now the beginning of the
+  # encoded string is 6 chars. So, anything in the next 10 chars will be
+  # included in the 1st block. After that, whatever I add will be added to the
+  # next block. To extract 1 block completely, I need to be able to encode admin
+  # in 16chars somehow. 'admin' is 5 chars. 
+  cipher =  pm.encrypt_profile("----------admin\0\0\0\0\0\0\0\0\0\0\0").
+    unpack("m")[0].strip
+
+  raise "cipher size not a multiple of 16" unless cipher.length % 16 == 0
+
+  block2 = cipher[16..31]
+
+  # This results in no padding:
+  #   ap pm.decrypt_profile(pm.encrypt_profile("aaa@g.com"))
+  # If I make sure that "user" has its own block, I can swap that block
+  # with an ecrypted block of "admin". Since 'user' is 4 bytes I add 4 more chars
+  # to the test email:
+  #   ap  pm.decrypt_profile(pm.encrypt_profile("aaa4444@g.com"))
+  # In the block above, I now just need to swap the last block with the block
+  # I extracted above
+  cipher2 = pm.encrypt_profile("aaa4444@g.com").unpack("m")[0].strip
+  hacked_cipher = [cipher2[0..-17] + block2].pack("m")
+
+  ap pm.decrypt_profile(hacked_cipher)
+  # {
+  #   "email" => "aaa4444@g.com",
+  #     "uid" => "10",
+  #    "role" => "admin\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+  # }
 end
 
 # Now this is a much better way to detect block size unlike what I did
@@ -118,6 +153,3 @@ end
 
 decrypt_profile
 
-# cipher64_decrypted = AES.new.aes_ecb_decrypt(cipher64, key)
-
-# ap k_v_parse(cipher64_decrypted.strip)
