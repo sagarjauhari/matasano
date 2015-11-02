@@ -1,6 +1,5 @@
 # Common helper methods for crypto solutions
 require "awesome_print"
-require "base64"
 require "matrix"
 
 def decode_hex(str)
