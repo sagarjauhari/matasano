@@ -59,6 +59,9 @@ class AES
     [encrypted_data.join].pack("m")
   end
 
+  # Update: Another implementation could be to just to ECB decryption on the
+  # entire string and then take the (IV, cipher text) and (decrypted text) and
+  # xor the corresponding blocks
   # @param key [String] 16 byte block
   # @param iv [String] 16 byte block
   def aes_cbc_decrypt(data, key, iv)

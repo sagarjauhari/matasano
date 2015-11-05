@@ -41,6 +41,29 @@ def hex_to_base64(str)
 end
 
 ############# AES Helpers #############
+# Strip PKCS#7 padding if it is valid, else raise exception
+def validate_pkcs7(str)
+  padding_chars = (1..31).to_a.map(&:chr)
+  last_char = str[-1]
+  str_stripped = str
+
+  if last_char.ord == 0
+    raise "PKCS#7 padding validation failed: 0x00 is not allowed for padding."
+  end
+
+  # If last char is one of the padding chars, then it should repeat exactly
+  # as many times
+  if padding_chars.include?(last_char)
+    if ([last_char]*last_char.ord).join == str[-1*(last_char.ord)..-1]
+      str_stripped = str[0..-1*(last_char.ord) - 1]
+    else
+      raise "PKCS#7 padding validation failed"
+    end
+  end
+
+  str_stripped
+end
+
 # Generate random string of n bytes
 def random_str(n_bytes)
   (0..255).to_a.sample(n_bytes).map(&:chr).join
