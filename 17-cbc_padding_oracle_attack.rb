@@ -54,6 +54,7 @@ class CBCServer
   def random_cipher_64
     # Read a random line from file and encrypt it
     str = File.readlines("./data/17-data.txt").sample.unpack("m")[0]
+    # str = File.readlines("./data/17-data.txt").last.unpack("m")[0]
     [encrypt(str), @iv]
   end
 
@@ -92,14 +93,15 @@ def padding_attack
   last_block = iv # initialize last block with IV
 
   # Iterate over each block
-  (0..cipher.length/16).each do |block_idx|
+  (0..cipher.length/16 - 1).each do |block_idx|
     block = cipher[block_idx*16..(block_idx + 1)*16 - 1]
-    block_decrypted = (["\0"]*16).join
+    block_decrypted = [0]*16
 
     # Iterate over each byte starting from the last
-    # 15.downto(0).each do |attack_byte_idx|
-    15.downto(0).each do |attack_byte_idx| # debug
-      # Limit checking bytes to valid ASCII chars
+    attack_byte_idx_start = 15
+    attack_byte_idx_start.downto(0).each do |attack_byte_idx| # debug
+      found_byte = false
+
       (0..255).each do |guessed_byte|
         spy_block = last_block.dup
 
@@ -125,19 +127,54 @@ def padding_attack
         end
 
         if server.decrypt(block, spy_block)
-          block_decrypted[attack_byte_idx] = guessed_byte.chr
+          # Found value!
+          block_decrypted[attack_byte_idx] = guessed_byte
+
+          if guessed_byte.ord == 1 && attack_byte_idx == 15
+            # Gussing the byte "0x01" is tricky.
+            # ----------------------------------
+            # If the block is already padded, then if guess byte and target
+            # overwrite are both '1', the result would be original string -
+            # which returns true since the padding is correct - but the guessed
+            # byte will incorrectly be accepted to be 0x01.
+            #
+            # e.g. plain text block is: "aaaaaaaaaaaaa\03\03\03"
+            # Now, when attack byte is the last "\03" and guessed byte is "\01"
+            # 3 ^ 1 ^ 1 = 3 (because target overwrite for last byte is 0x01)
+            # So, final block would still be "aaaaa\03\03\03" - which is correct
+            # padding. Same for "aaaaaaaaaaaa\04\04\04\04"
+            #
+            # Guessed byte and target overwrite, both being '1' is correct only
+            # when the original byte is also '1': "aaaaaaaaaaaaaaa\01". Really?
+
+            next unless last_block[attack_byte_idx].ord == 1
+          end
+
+          # puts
+          # ap "Found #{guessed_byte.chr}"
+          # Handle the case when the plain text is already padded.
+          # So, guessed_byte.char is among 0x01 - 0x0F
 
           # Save the value at attack byte so it can be resued in next iteration
           last_block[attack_byte_idx] = (
             spy_block[attack_byte_idx].ord ^
             (16 - attack_byte_idx)
           ).chr
+
+          found_byte = true
           break
         end
       end
+
+      unless found_byte
+        # This probably means that a wrong byte was assumed to be the correct
+        # byte in the last index or the 
+        puts "\nByte for block #{block_idx} ,idx #{attack_byte_idx} not found!"
+        break
+      end
     end
     
-    final_result << block_decrypted
+    final_result << block_decrypted.map(&:chr).join
     last_block = block
     print "."
   end
@@ -145,4 +182,4 @@ def padding_attack
   final_result
 end
 
-ap padding_attack
+# ap padding_attack
