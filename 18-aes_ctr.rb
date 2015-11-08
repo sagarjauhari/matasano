@@ -43,7 +43,7 @@ require "./1-7_aes_ecb.rb"
 #          64 bit little endian block count (byte count / 16)
 class AES
   def aes_ctr_encrypt(data, key, params)
-     # Following are arrays of byte integers (0-255)
+    # Following are arrays of byte integers (0-255)
     data_arr = data.unpack("C*")
     encrypted_arr = []
     keystream_arr = []
@@ -63,9 +63,26 @@ class AES
     [encrypted_arr.pack("C*")].pack("m")
   end
 
-  def aes_ctr_decrypt(data, key, params)
-    ap data
-    data
+  # Almost exactly the same as encryption method
+  def aes_ctr_decrypt(cipher64, key, params)
+    # Following are arrays of byte integers (0-255)
+    cipher_arr = cipher64.unpack("m")[0].unpack("C*")
+    decrypted_arr = []
+    keystream_arr = []
+
+    cipher_arr.each_with_index do |data_int, idx|
+      block_num = idx / 16
+      byte_idx  = idx % 16
+
+      if byte_idx == 0
+        # Generate a new keystream block for these 16 bytes
+        keystream_arr = new_keystream_arr(block_num, key)
+      end
+
+      decrypted_arr << (data_int ^ keystream_arr[byte_idx])
+    end
+
+    decrypted_arr.pack("C*")
   end
 
   private
@@ -79,10 +96,18 @@ class AES
   end
 end
 
+# AES.new.process_file(
+#   "ctr",
+#   "encrypt",
+#   "./data/18-test_plain_text.txt",
+#   "YELLOW SUBMARINE",
+#   "./data/18-test_encrypted.txt"
+# )
+
 AES.new.process_file(
   "ctr",
-  "encrypt",
-  "./data/18-test_plain_text.txt",
+  "decrypt",
+  "./data/18-test_encrypted.txt",
   "YELLOW SUBMARINE",
-  "./data/18-test_encrypted.txt"
+  "./data/18-test_decrypted.txt"
 )
