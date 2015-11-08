@@ -104,10 +104,18 @@ end
 #   "./data/18-test_encrypted.txt"
 # )
 
-AES.new.process_file(
-  "ctr",
-  "decrypt",
-  "./data/18-test_encrypted.txt",
-  "YELLOW SUBMARINE",
-  "./data/18-test_decrypted.txt"
-)
+# AES.new.process_file(
+#   "ctr",
+#   "decrypt",
+#   "./data/18-test_encrypted.txt",
+#   "YELLOW SUBMARINE",
+#   "./data/18-test_decrypted.txt"
+# )
+
+# AES.new.process_file(
+#   "ctr",
+#   "decrypt",
+#   "./data/18-data.txt",
+#   "YELLOW SUBMARINE",
+#   "./data/18-data_decrypted.txt"
+# )
