@@ -24,6 +24,7 @@ require "./1-7_aes_ecb.rb"
 # CBC mode
 # TODO Add tests
 class AES
+  # TODO: Use generic process file method instead of this one
   # @param action [String] "encrypt" or "decrypt"
   # @param iv [String] initiation vector
   def process_file_cbc(action, in_file, key, iv, out_file)

@@ -34,26 +34,55 @@
 
 # Add methods to the existing AES class to do encryption/decryption in
 # CTR mode
+
+require "./1-7_aes_ecb.rb"
+
+# Assume:
+#   nonce=0
+#   format=64 bit unsigned little endian nonce,
+#          64 bit little endian block count (byte count / 16)
 class AES
-  def process_file_ctr(action, in_file, key, out_file)
-    data = File.open(in_file, "r"){ |f| f.read }
-    processed_data = send("aes_ctr_" + action, data, key)
+  def aes_ctr_encrypt(data, key, params)
+     # Following are arrays of byte integers (0-255)
+    data_arr = data.unpack("C*")
+    encrypted_arr = []
+    keystream_arr = []
 
-    puts "Writing #{action}ed file (#{processed_data.length} bytes): " +
-      "#{out_file}"
-    File.open(out_file, "w"){ |f| f.write(processed_data) }
-  end
-  
-  def aes_ctr_encrypt(data, key)
+    data_arr.each_with_index do |data_int, idx|
+      block_num = idx / 16
+      byte_idx  = idx % 16
+
+      if byte_idx == 0
+        # Generate a new keystream block for these 16 bytes
+        keystream_arr = new_keystream_arr(block_num, key)
+      end
+
+      encrypted_arr << (data_int ^ keystream_arr[byte_idx])
+    end
+
+    [encrypted_arr.pack("C*")].pack("m")
   end
 
-  def aes_ctr_decrypt(data, key)
+  def aes_ctr_decrypt(data, key, params)
+    ap data
+    data
+  end
+
+  private
+
+  # @return Array of byte integers (0 - 255)
+  def new_keystream_arr(counter, key)
+    counter_block = ([0]*8 + [counter] + [0]*7).pack("C*")
+
+    # Unpack and remove 16 byte padding
+    aes_ecb_encrypt(counter_block, key).unpack("m")[0].unpack("C*")[0..15]
   end
 end
 
-AES.new.process_file_ctr(
-  "decrypt",
-  "./data/18-data.text",
+AES.new.process_file(
+  "ctr",
+  "encrypt",
+  "./data/18-test_plain_text.txt",
   "YELLOW SUBMARINE",
-  "./dat/18-data_decrypted.txt"
+  "./data/18-test_encrypted.txt"
 )

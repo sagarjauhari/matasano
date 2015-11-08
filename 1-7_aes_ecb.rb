@@ -38,7 +38,7 @@ class AES
   end
 
   # Encrypts data using AES ECB with key and Base64s it
-  def aes_ecb_encrypt(data, key, params)
+  def aes_ecb_encrypt(data, key, params: {})
     key_arr = key.unpack("C*")
 
     data = pad_data(data, 16)
@@ -54,7 +54,7 @@ class AES
 
   # @param data [String] Base64 cipher text
   # @param key [String] Plain text key string
-  def aes_ecb_decrypt(data, key, params)
+  def aes_ecb_decrypt(data, key, params: {})
     key_arr = key.unpack("C*")
 
     data = data.unpack("m").first.unpack("C*")
