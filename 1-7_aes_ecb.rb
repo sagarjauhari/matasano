@@ -27,18 +27,18 @@ class AES
   end
 
   # @param action "encrypt" or "decrypt"
-  def process_file_ecb(action, in_file, key, out_file)
+  def process_file(mode, action, in_file, key, out_file, params: {})
     data = File.open(in_file, "r"){ |f| f.read }
-    processed_data = send("aes_ecb_" + action, data, key)
+    processed_data = send("aes_#{mode}_#{action}", data, key, params)
 
-    puts "Writing #{action}ed file (#{processed_data.length} bytes): " +
-      "#{out_file}"
+    puts "Writing file #{action}ed using AES #{mode} mode " +
+      "(#{processed_data.length} bytes): #{out_file}"
     ap processed_data if DEBUG
     File.open(out_file, "w"){ |f| f.write(processed_data) }
   end
 
   # Encrypts data using AES ECB with key and Base64s it
-  def aes_ecb_encrypt(data, key)
+  def aes_ecb_encrypt(data, key, params)
     key_arr = key.unpack("C*")
 
     data = pad_data(data, 16)
@@ -54,7 +54,7 @@ class AES
 
   # @param data [String] Base64 cipher text
   # @param key [String] Plain text key string
-  def aes_ecb_decrypt(data, key)
+  def aes_ecb_decrypt(data, key, params)
     key_arr = key.unpack("C*")
 
     data = data.unpack("m").first.unpack("C*")
@@ -236,21 +236,24 @@ class AES
   end
 end
 
-# AES.new.process_file_ecb(
+# AES.new.process_file(
+#   "ecb",
 #   "encrypt",
 #   "data/1-7_test_plain_text.txt",
 #   "YELLOW SUBMARINE",
 #   "data/1-7_test_encrypted.txt"
 # )
 
-# AES.new.process_file_ecb(
+# AES.new.process_file(
+#   "ecb",
 #   "decrypt",
 #   "data/1-7_test_encrypted.txt",
 #   "YELLOW SUBMARINE",
 #   "data/1-7_test_decrypted.txt"
 # )
 
-# AES.new.process_file_ecb(
+# AES.new.process_file(
+#   "ecb",
 #   "decrypt",
 #   "data/1-7_data.txt",
 #   "YELLOW SUBMARINE",
