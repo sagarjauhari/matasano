@@ -43,22 +43,20 @@ end
 ############# AES Helpers #############
 # Strip PKCS#7 padding if it is valid, else raise exception
 def validate_pkcs7(str)
-  padding_chars = (1..31).to_a.map(&:chr)
+  padding_chars = (1..16).to_a.map(&:chr)
   last_char = str[-1]
   str_stripped = str
 
-  if last_char.ord == 0
-    raise "PKCS#7 padding validation failed: 0x00 is not allowed for padding."
+  unless padding_chars.include?(last_char)
+    raise "PKCS#7 validation failed: Last char not in range 0x01 - 0x0F"
   end
 
   # If last char is one of the padding chars, then it should repeat exactly
   # as many times
-  if padding_chars.include?(last_char)
-    if ([last_char]*last_char.ord).join == str[-1*(last_char.ord)..-1]
-      str_stripped = str[0..-1*(last_char.ord) - 1]
-    else
-      raise "PKCS#7 padding validation failed"
-    end
+  if ([last_char]*last_char.ord).join == str[-1*(last_char.ord)..-1]
+    str_stripped = str[0..-1*(last_char.ord) - 1]
+  else
+    raise "PKCS#7 validation failed: Padding byte not repeated enough"
   end
 
   str_stripped
@@ -69,9 +67,16 @@ def random_str(n_bytes)
   (0..255).to_a.sample(n_bytes).map(&:chr).join
 end
 
-# Pad the plain text if needed to fill blocks of size 'n'
+# PKCS#7 Padding.
 def pad_data(text, block_size)
-  n_missing = (text.length % block_size > 0) ? block_size - (text.length % block_size) : 0
+  # If the original data is a multiple of N bytes, then an extra block of bytes
+  # with value N is added.
+  n_missing = block_size
+
+  if text.length % block_size > 0
+    n_missing = block_size - (text.length % block_size)
+  end
+
   n_missing.times{ text << n_missing.chr }
   text
 end
