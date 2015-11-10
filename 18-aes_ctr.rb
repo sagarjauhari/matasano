@@ -42,7 +42,9 @@ require "./1-7_aes_ecb.rb"
 #   format=64 bit unsigned little endian nonce,
 #          64 bit little endian block count (byte count / 16)
 class AES
-  def aes_ctr_encrypt(data, key, params)
+  # @param data [String] Plain text data
+  # @return 64bit cipher text (encrypted in CTR mode)
+  def aes_ctr_encrypt(data, key, params: {})
     # Following are arrays of byte integers (0-255)
     data_arr = data.unpack("C*")
     encrypted_arr = []
@@ -64,7 +66,7 @@ class AES
   end
 
   # Almost exactly the same as encryption method
-  def aes_ctr_decrypt(cipher64, key, params)
+  def aes_ctr_decrypt(cipher64, key, params: {})
     # Following are arrays of byte integers (0-255)
     cipher_arr = cipher64.unpack("m")[0].unpack("C*")
     decrypted_arr = []
