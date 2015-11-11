@@ -64,26 +64,33 @@ def break_repeat_key_xor(filename)
 
   best_key_sizes.each do |key_size|
     puts "Key size: #{key_size}"
-    blocks = transpose_blocks(data, key_size)
+    probably_key = break_repeat_key_xor_data(data, key_size)
 
-    # Solve each block as if it was single-character XOR. For each block, the
-    # single-byte XOR key that produces the best looking histogram is the
-    # repeating-key XOR key byte for that block. Put them together and you have
-    # the key.
-    key = blocks.map do |idx, block|
-      best_result = single_byte_xor_cipher(encode_hex(block))[0]
-      key_part = best_result[0]
-      [idx, key_part]
-    end.
-      sort_by{ |i| i[0] }.
-      map{ |i| i[1].chr }.
-      join("")
-
-    puts "Probable key: '#{key}'"
     puts "=========================================================="
-    puts "Decrypted text: '#{decrypt_64file("./1-6_data.txt", key)}'"
+    puts "Decrypted text: '#{decrypt_64file("./1-6_data.txt", probably_key)}'"
     puts "=========================================================="
   end
+end
+
+# For a given key size, breaks repeat key XOR on the data
+def break_repeat_key_xor_data(data, key_size)
+  blocks = transpose_blocks(data, key_size)
+
+  # Solve each block as if it was single-character XOR. For each block, the
+  # single-byte XOR key that produces the best looking histogram is the
+  # repeating-key XOR key byte for that block. Put them together and you have
+  # the key.
+  key = blocks.map do |idx, block|
+    best_result = single_byte_xor_cipher(encode_hex(block))[0]
+    key_part = best_result[0]
+    [idx, key_part]
+  end.
+    sort_by{ |i| i[0] }.
+    map{ |i| i[1].chr }.
+    join("")
+
+  puts "Probable key: '#{key}'"
+  key
 end
 
 def key_size_stats(data)
@@ -155,6 +162,5 @@ def decrypt_64file(filename, key)
 
   [repeat_key_xor(data, key)].pack("H*")
 end
-
 
 # break_repeat_key_xor("./1-6_data.txt")
